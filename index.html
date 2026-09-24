@@ -2,1458 +2,631 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>因數大冒險 - 極致街機版</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>因數神射手：加特林覺醒</title>
     <style>
+        :root {
+            --primary-bg: #1a1a2e;
+            --board-bg: #16213e;
+            --text-color: #fff;
+            --fever-bg: radial-gradient(circle, #ffcc00, #e69500);
+            --warning-color: rgba(255, 0, 0, 0.4);
+        }
         body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background-color: #0b0f19;
-            touch-action: manipulation;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
-            background-image: radial-gradient(circle at 50% 50%, #151c2e 0%, #070a12 100%);
+            margin: 0; padding: 0; background-color: var(--primary-bg);
+            color: var(--text-color); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; overflow: hidden; touch-action: none; user-select: none;
         }
-        /* 電玩街機霓虹發光效果 */
-        .arcade-border {
-            box-shadow: 0 0 25px rgba(99, 102, 241, 0.25), inset 0 0 15px rgba(99, 102, 241, 0.15);
-            border: 2px solid rgba(99, 102, 241, 0.4);
+        #game-container {
+            width: 100%; max-width: 800px; height: 100%; max-height: 600px;
+            display: flex; flex-direction: column; background: var(--board-bg);
+            box-shadow: 0 0 20px rgba(0,0,0,0.8); position: relative; transition: box-shadow 0.3s;
         }
-        .arcade-text {
-            font-family: 'Press Start 2P', monospace;
-            text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+        #game-container.warning-active #game-board {
+            box-shadow: inset 0 0 80px var(--warning-color);
+            animation: red-alert 1s infinite;
         }
-        canvas {
-            border-radius: 12px;
-            image-rendering: pixelated;
-            touch-action: none; /* 防止手機/平板在畫布上滑動時觸發瀏覽器滾動 */
+        @keyframes red-alert {
+            0%, 100% { box-shadow: inset 0 0 30px red; }
+            50% { box-shadow: inset 0 0 100px red; background-color: #3a1616; }
         }
+        
+        #header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 20px; background: rgba(0, 0, 0, 0.6); font-size: 16px; font-weight: bold; z-index: 10;
+        }
+        #stats-center { text-align: center; font-size: 18px; }
+        #hp-display { color: #ff4757; letter-spacing: 2px; }
+        #coin-display { color: #ffd700; margin-top: 4px; }
+        #target-info { color: #55efc4; font-size: 14px; }
+        #level-badge {
+            background: #e84393; padding: 4px 10px; border-radius: 8px; color: white; margin-right: 10px;
+        }
+        #energy-bar-container {
+            width: 100px; height: 16px; background: #333; border-radius: 8px;
+            overflow: hidden; border: 2px solid #555;
+        }
+        #energy-bar {
+            width: 0%; height: 100%; background: linear-gradient(90deg, #ffd700, #ffaa00); transition: width 0.3s;
+        }
+        
+        #game-board { flex-grow: 1; position: relative; overflow: hidden; transition: background 0.3s; }
+        .fever-active #game-board { background: var(--fever-bg); animation: gold-shake 0.5s infinite; }
+        @keyframes gold-shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            25% { transform: translate(-2px, -1px) rotate(-1deg); }
+            50% { transform: translate(1px, 2px) rotate(1deg); }
+            75% { transform: translate(-1px, -2px) rotate(0deg); }
+            100% { transform: translate(1px, 1px) rotate(0deg); }
+        }
+        
+        .monster {
+            position: absolute; width: 75px; height: 75px;
+            background: radial-gradient(circle, #2a2a72, #009ffd);
+            border: 2px solid #fff; border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.6); transition: transform 0.1s;
+        }
+        .monster-face { font-size: 24px; line-height: 1.1; text-shadow: 2px 2px 0px #000; }
+        .monster-num {
+            font-size: 16px; font-weight: bold; background: rgba(0,0,0,0.8);
+            color: #fff; padding: 2px 6px; border-radius: 10px; border: 1px solid #ffd700;
+        }
+        
+        #controls {
+            display: flex; justify-content: center; align-items: center; gap: 15px;
+            padding: 15px; background: rgba(0, 0, 0, 0.8); z-index: 10;
+        }
+        .reload-btn {
+            background: #444; color: #fff; border: 2px solid #666;
+            padding: 12px 15px; font-size: 18px; border-radius: 12px;
+            cursor: pointer; box-shadow: 0 4px 0 #222; font-weight: bold; width: 110px;
+        }
+        .reload-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #222; }
+        
+        #current-bullet-container { display: flex; flex-direction: column; align-items: center; margin: 0 10px; }
+        .bullet-label { font-size: 14px; color: #aaa; margin-bottom: 5px; }
+        #current-bullet {
+            width: 80px; height: 80px; background: radial-gradient(circle, #00b894, #008f73);
+            border: 4px solid #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            font-size: 36px; font-weight: bold; box-shadow: 0 0 15px #00b894; transition: all 0.2s;
+        }
+        .fever-active #current-bullet {
+            background: radial-gradient(circle, #fff, #ffd700);
+            box-shadow: 0 0 30px #ffd700; border-color: #ffaa00; color: #b30000;
+        }
+        .cooldown-active #current-bullet {
+            background: #333; box-shadow: 0 0 10px #000; border-color: #ff7675; color: #ff7675;
+        }
+        
+        #gatling-indicator {
+            display: none; position: absolute; top: -35px; left: 50%; transform: translateX(-50%);
+            color: #ffd700; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px #000;
+            white-space: nowrap; animation: flash 0.5s infinite;
+        }
+        .fever-active #gatling-indicator { display: block; }
+        .fever-active .reload-btn, .cooldown-active .reload-btn { opacity: 0.3; pointer-events: none; }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        .floating-text {
+            position: absolute; font-size: 24px; font-weight: bold; pointer-events: none;
+            animation: floatUp 1s forwards; text-shadow: 2px 2px 4px #000; z-index: 20;
+        }
+        .text-hit { color: #55efc4; } .text-miss { color: #ff7675; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-50px) scale(1.3); } }
+
+        /* 大絕冷卻文字特效 */
+        .cooldown-alert {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 48px; font-weight: bold; color: #ff7675; text-shadow: 0 0 20px #000;
+            z-index: 100; animation: alertFade 1.5s forwards; pointer-events: none;
+        }
+        @keyframes alertFade { 
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.8); } 
+            20% { transform: translate(-50%, -50%) scale(1.1); } 
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } 
+        }
+
+        .overlay {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 100;
+            flex-direction: column; justify-content: center; align-items: center; text-align: center;
+        }
+        .overlay h1 { font-size: 42px; margin: 0 0 15px 0; color: #fff; }
+        .overlay p { font-size: 18px; margin-bottom: 20px; color: #ddd; }
+        
+        .instruction-box {
+            text-align: left; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;
+            font-size: 17px; line-height: 1.6; color: #eee; margin-bottom: 25px; max-width: 85%;
+        }
+
+        .shop-container { display: flex; gap: 15px; margin-bottom: 30px; }
+        .shop-btn {
+            background: #2d3436; border: 2px solid #636e72; color: white;
+            padding: 15px; border-radius: 12px; font-size: 16px; font-weight: bold;
+            cursor: pointer; width: 160px; transition: all 0.2s; display: flex; flex-direction: column; align-items: center;
+        }
+        .shop-btn:hover:not(:disabled) { background: #4a69bd; border-color: #74b9ff; }
+        .shop-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .shop-price { color: #ffd700; margin-top: 8px; font-size: 20px; }
+        
+        .action-btn {
+            padding: 15px 40px; font-size: 22px; font-weight: bold; border-radius: 10px;
+            border: none; background: #00b894; color: white; cursor: pointer; box-shadow: 0 4px 0 #008f73;
+        }
+        .action-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #008f73; }
     </style>
 </head>
-<body class="min-h-screen text-slate-200 flex flex-col overflow-x-hidden select-none pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+<body>
 
-    <!-- 頂部精緻電玩 HUD 面板 -->
-    <header class="w-full max-w-4xl mx-auto mt-2 sm:mt-4 px-3 sm:px-4">
-        <div class="bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-2xl p-3 sm:p-4 flex flex-wrap justify-between items-center gap-2 sm:gap-4 shadow-xl">
-            <!-- 標題 -->
-            <div class="flex items-center gap-2 sm:gap-3">
-                <div class="bg-indigo-600 p-2 sm:p-2.5 rounded-xl text-white shadow-lg shadow-indigo-600/30 animate-pulse">
-                    <i class="fa-solid fa-gamepad text-base sm:text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="text-sm sm:text-lg font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
-                        FACTOR ZUMA <span class="text-[10px] sm:text-xs font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-1.5 py-0.5 rounded ml-1">觸控強化版</span>
-                    </h1>
-                    <p class="text-[10px] sm:text-[11px] text-slate-400 hidden xs:block">點怪鎖定再點發射！亦可直接點擊砲台切換彈藥！</p>
-                </div>
-            </div>
-
-            <!-- 數據統計 -->
-            <div class="flex items-center gap-1.5 sm:gap-3 flex-wrap ml-auto">
-                <div class="bg-slate-950/90 border border-slate-800 rounded-xl px-2.5 sm:px-3.5 py-1 sm:py-1.5 flex items-center gap-1.5 sm:gap-2">
-                    <span class="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase">SCORE</span>
-                    <span id="scoreVal" class="font-black text-amber-400 text-sm sm:text-base tracking-wider">0</span>
-                </div>
-                <div class="bg-slate-950/90 border border-slate-800 rounded-xl px-2.5 sm:px-3.5 py-1 sm:py-1.5 flex items-center gap-1.5 sm:gap-2">
-                    <span class="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase">LV</span>
-                    <span id="levelVal" class="font-black text-cyan-400 text-sm sm:text-base">1</span>
-                </div>
-                <div class="bg-slate-950/90 border border-slate-800 rounded-xl px-2.5 sm:px-3.5 py-1 sm:py-1.5 flex items-center gap-1.5 sm:gap-2">
-                    <span class="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase">PROG</span>
-                    <span id="progressVal" class="font-black text-fuchsia-400 text-sm sm:text-base">0/8</span>
-                </div>
-                <!-- 生命值 -->
-                <div class="flex items-center gap-1 bg-slate-950/90 border border-slate-800 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl" id="livesContainer">
-                    <i class="fa-solid fa-heart text-rose-500 text-xs"></i>
-                    <i class="fa-solid fa-heart text-rose-500 text-xs"></i>
-                    <i class="fa-solid fa-heart text-rose-500 text-xs"></i>
-                    <i class="fa-solid fa-heart text-rose-500 text-xs"></i>
-                    <i class="fa-solid fa-heart text-rose-500 text-xs"></i>
-                </div>
-            </div>
+<div id="game-container">
+    <div id="start-overlay" class="overlay" style="display: flex;">
+        <h1 style="color: #ffd700;">因數神射手</h1>
+        <div class="instruction-box">
+            🎯 <b>核心玩法：</b>發射與怪物數字有「公因數」的子彈！<br>
+            💰 <b>換彈限制：</b>找不到目標時可換彈，但每次扣 <b>2 枚金幣</b>。<br>
+            ⭐ <b>得分與能量規則：</b><br>
+             • 子彈 <b>13</b> ➔ <b>+20 分</b> (魔王級難度)<br>
+             • 子彈 <b>7</b> 或 <b>破百的11倍數</b> ➔ <b>+15 分</b> (進階)<br>
+             • 子彈 <b>3, 4, 6, 8, 9</b> ➔ <b>+10 分</b> (一般)<br>
+             • 子彈 <b>2, 5, 10</b> 與 <b>兩位數的疊字(如44)</b> ➔ <b>+5 分</b> (太簡單囉)<br>
+             • <b>加特林 1</b> (無敵掃射) ➔ <b>+1 分</b> (純紓壓)<br>
+            ❌ <b>注意：</b>打錯會扣 1 滴血，歸零就出局囉！
         </div>
-    </header>
+        <button class="action-btn" onclick="startGame()">▶ 開始遊戲 (獲得初始 20 金幣)</button>
+    </div>
 
-    <main class="flex-1 w-full max-w-4xl mx-auto px-3 sm:px-4 mt-2 sm:mt-4 flex flex-col gap-3 sm:gap-4">
+    <div id="sys-overlay" class="overlay">
+        <h1 id="sys-title"></h1>
+        <p id="sys-desc"></p>
+        <button id="restart-btn" class="action-btn" onclick="location.reload()">重新開始</button>
+    </div>
+
+    <div id="shop-overlay" class="overlay">
+        <h1 style="color: #ffd700;">過關商店</h1>
+        <p>通關獎勵: <span id="earned-coins">0</span> 🪙 | 總金幣: <span id="total-coins">0</span> 🪙</p>
         
-        <!-- 街機框體 -->
-        <div class="relative bg-slate-950 rounded-2xl overflow-hidden arcade-border flex justify-center items-center shadow-2xl">
-            
-            <!-- 教學 & 開始按鈕 Overlay -->
-            <div id="tutorialOverlay" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col justify-center items-center p-4 sm:p-6 text-center z-20 overflow-y-auto transition-all duration-300">
-                <div class="max-w-md w-full bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-2xl shadow-2xl my-auto">
-                    <div class="text-4xl sm:text-5xl mb-2 sm:mb-3">👾</div>
-                    <h2 class="text-xl sm:text-2xl font-black text-indigo-400 mb-3 tracking-wider">因數大冒險 - 街機觸控版</h2>
-                    <div class="space-y-2.5 sm:space-y-3.5 text-slate-300 text-left text-xs leading-relaxed mb-5">
-                        <p class="flex items-start gap-2">
-                            <span class="bg-indigo-500/20 text-indigo-300 rounded-full w-5 h-5 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">1</span>
-                            <span><strong>擊倒規則：</strong>子彈必須是怪獸（合數）的因數，擊中可進行除法，除到 <code>1</code> 怪獸便會爆裂消除！</span>
-                        </p>
-                        <p class="flex items-start gap-2">
-                            <span class="bg-indigo-500/20 text-indigo-300 rounded-full w-5 h-5 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">2</span>
-                            <span><strong>觸控鎖定：</strong>手指點擊怪獸「鎖定」，再次點擊「發射」！子彈自動追蹤必中，不怕手指擋視線。</span>
-                        </p>
-                        <p class="flex items-start gap-2 text-amber-300">
-                            <span class="bg-amber-500/20 text-amber-300 rounded-full w-5 h-5 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">📱</span>
-                            <span><strong>平板/手機捷徑：</strong>點擊畫面正下方的「砲台」或「NEXT子彈」，即可瞬間切換備用彈藥！</span>
-                        </p>
-                    </div>
-                    <button onclick="startGame()" class="w-full py-3.5 sm:py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-black rounded-xl shadow-lg shadow-indigo-600/30 transition-all transform active:scale-95 text-xs sm:text-sm tracking-wider uppercase">
-                        START GAME 開始冒險
-                    </button>
-                </div>
-            </div>
-
-            <!-- 關卡勝利 Overlay -->
-            <div id="levelCompleteOverlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col justify-center items-center p-6 text-center z-20 hidden">
-                <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl max-w-sm shadow-2xl">
-                    <div class="bg-emerald-500/10 text-emerald-400 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 text-3xl animate-bounce">
-                        <i class="fa-solid fa-trophy"></i>
-                    </div>
-                    <h2 class="text-2xl font-black text-emerald-400 mb-2">STAGE CLEAR!</h2>
-                    <p class="text-slate-400 mb-6 text-xs leading-relaxed">
-                        心算能力完美發揮！成功消滅了所有的合數怪物！
-                    </p>
-                    <div class="bg-slate-950 px-6 py-3 rounded-xl mb-6 shadow-inner">
-                        <p class="text-[10px] text-slate-500 font-bold mb-1 uppercase">CURRENT SCORE</p>
-                        <p id="levelCompleteScore" class="text-2xl font-black text-amber-400">0</p>
-                    </div>
-                    <button onclick="nextLevel()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all text-xs transform active:scale-95 tracking-widest uppercase">
-                        NEXT STAGE <i class="fa-solid fa-play ml-1"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- 遊戲結束 Overlay -->
-            <div id="gameOverlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col justify-center items-center p-6 text-center z-20 hidden">
-                <div class="text-5xl mb-4">💥</div>
-                <h2 id="overlayTitle" class="text-3xl font-black text-rose-500 mb-2 tracking-wider">GAME OVER</h2>
-                <p id="overlayDesc" class="text-slate-400 mb-6 text-xs max-w-sm">練習是進步的階梯！再接再厲，多挑戰幾次，你的心算反應一定會變得更敏捷！</p>
-                <div class="bg-slate-900 border border-slate-800 px-7 py-4 rounded-xl mb-6 shadow-inner">
-                    <p class="text-[10px] text-slate-500 font-semibold mb-1 uppercase">FINAL SCORE</p>
-                    <p id="overlayScore" class="text-3xl font-black text-amber-400">0</p>
-                </div>
-                <button onclick="resetGame()" class="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl shadow-lg shadow-indigo-600/30 transition-all text-xs transform active:scale-95 tracking-widest uppercase">
-                    TRY AGAIN <i class="fa-solid fa-arrow-rotate-right ml-1"></i>
-                </button>
-            </div>
-
-            <!-- 遊戲主要畫布 -->
-            <canvas id="gameCanvas" width="800" height="420" class="block bg-[#070b13] w-full h-auto max-w-full aspect-[800/420]"></canvas>
+        <div class="shop-container">
+            <button class="shop-btn" id="btn-potion" onclick="buyItem('potion')">
+                ❤️ 補血藥劑<br><span style="font-size: 12px; color:#aaa;">(恢復 1 點血量)</span>
+                <div class="shop-price">50 🪙</div>
+            </button>
+            <button class="shop-btn" id="btn-multiplier" onclick="buyItem('multiplier')">
+                🪙 獎勵加倍<br><span style="font-size: 12px; color:#aaa;">(下關獲得 2 倍金幣)</span>
+                <div class="shop-price">80 🪙</div>
+            </button>
+            <button class="shop-btn" id="btn-fever" onclick="buyItem('fever')">
+                ⏱️ 大絕延長<br><span style="font-size: 12px; color:#aaa;">(加特林延長 2 秒)</span>
+                <div class="shop-price">120 🪙</div>
+            </button>
         </div>
+        
+        <button class="action-btn" onclick="startNextLevel()">進入下一關 ➔</button>
+    </div>
 
-        <!-- 控制與操作按鈕 (行動端大尺寸按鈕優化) -->
-        <div class="bg-slate-900/80 border border-slate-800/80 p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-center justify-between shadow-md">
-            <div class="flex items-center justify-between w-full sm:w-auto gap-2 sm:gap-3">
-                <!-- 更換子彈 (大觸控目標) -->
-                <button onclick="swapBullets()" class="flex-1 sm:flex-initial min-h-[44px] px-3.5 sm:px-4 py-2.5 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all transform active:scale-95 shadow">
-                    <i class="fa-solid fa-arrows-rotate text-indigo-400 text-sm"></i>
-                    <span>更換備彈</span>
-                </button>
-                
-                <!-- 丟棄子彈 (大觸控目標) -->
-                <button onclick="discardBulletDirectly()" class="flex-1 sm:flex-initial min-h-[44px] px-3.5 sm:px-4 py-2.5 bg-purple-950/50 hover:bg-purple-900/60 border border-purple-700/50 text-purple-200 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all transform active:scale-95 shadow">
-                    <i class="fa-solid fa-trash text-purple-400 text-sm"></i>
-                    <span>丟棄子彈</span>
-                </button>
-
-                <!-- 下發彈藥預覽 (點擊也可換彈) -->
-                <div onclick="swapBullets()" class="flex items-center gap-1.5 cursor-pointer bg-slate-950/80 hover:bg-slate-800/80 border border-slate-800 rounded-xl px-2.5 py-1.5 transition-all transform active:scale-95" title="點擊切換子彈">
-                    <span class="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase hidden xs:inline">NEXT</span>
-                    <div id="nextBulletBadge" class="w-8 h-8 rounded-full bg-slate-800 text-slate-200 font-black flex items-center justify-center border-2 border-indigo-500 shadow-md text-xs">
-                        3
-                    </div>
-                </div>
-            </div>
-
-            <!-- 難度控制 (行動端易點擊排版) -->
-            <div class="flex items-center justify-center w-full sm:w-auto gap-1 text-[11px] sm:text-xs">
-                <span class="text-slate-500 font-semibold mr-1 hidden md:inline">DIFFICULTY:</span>
-                <button onclick="setDifficulty('easy')" id="btnDiffEasy" class="flex-1 sm:flex-initial min-h-[38px] px-3 py-1.5 rounded-xl font-bold transition-all border border-indigo-600 bg-indigo-600/20 text-indigo-300 text-center">
-                    初級(20)
-                </button>
-                <button onclick="setDifficulty('medium')" id="btnDiffMedium" class="flex-1 sm:flex-initial min-h-[38px] px-3 py-1.5 rounded-xl font-bold transition-all border border-slate-800 text-slate-400 text-center">
-                    中級(50)
-                </button>
-                <button onclick="setDifficulty('hard')" id="btnDiffHard" class="flex-1 sm:flex-initial min-h-[38px] px-3 py-1.5 rounded-xl font-bold transition-all border border-slate-800 text-slate-400 text-center">
-                    高級(100)
-                </button>
+    <div id="header">
+        <div>
+            <span id="level-badge">第 1 關</span> <br>
+            <span id="target-info">目標: 100分</span>
+        </div>
+        <div id="stats-center">
+            <div id="hp-display">❤️❤️❤️❤️❤️</div>
+            <div id="coin-display">🪙 0</div>
+        </div>
+        <div style="text-align: right;">
+            分數: <span id="score">0</span>
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 5px; font-size:14px; margin-top:5px;">
+                Fever! <div id="energy-bar-container"><div id="energy-bar"></div></div>
             </div>
         </div>
-    </main>
+    </div>
+    
+    <div id="game-board"></div>
+    
+    <div id="controls">
+        <button class="reload-btn">🔄 換彈</button>
+        <div style="position: relative;">
+            <div id="gatling-indicator">✨ 聖光加特林 ✨</div>
+            <div id="current-bullet-container">
+                <div class="bullet-label" id="bullet-label">準備射擊</div>
+                <div id="current-bullet">2</div>
+            </div>
+        </div>
+        <button class="reload-btn">🔄 換彈</button>
+    </div>
+</div>
 
-    <script>
-        // Web Audio API 建立復古電子音效合成器
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+<script>
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx;
 
-        function playSound(type) {
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+    function initAudio() {
+        if (!audioCtx) audioCtx = new AudioContext();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+    
+    function playSFX(type) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
 
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            const now = audioCtx.currentTime;
-
-            if (type === 'shoot') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(400, now);
-                osc.frequency.exponentialRampToValueAtTime(850, now + 0.08);
-                gain.gain.setValueAtTime(0.06, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-                osc.start(now);
-                osc.stop(now + 0.08);
-            } else if (type === 'correct') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(523.25, now); // C5
-                osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
-                osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
-                gain.gain.setValueAtTime(0.08, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-                osc.start(now);
-                osc.stop(now + 0.25);
-            } else if (type === 'wrong') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(140, now);
-                osc.frequency.linearRampToValueAtTime(70, now + 0.25);
-                gain.gain.setValueAtTime(0.12, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-                osc.start(now);
-                osc.stop(now + 0.25);
-            } else if (type === 'explode') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(90, now);
-                osc.frequency.exponentialRampToValueAtTime(15, now + 0.4);
-                gain.gain.setValueAtTime(0.15, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-                osc.start(now);
-                osc.stop(now + 0.4);
-            } else if (type === 'discard') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(450, now);
-                osc.frequency.exponentialRampToValueAtTime(150, now + 0.12);
-                gain.gain.setValueAtTime(0.05, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-                osc.start(now);
-                osc.stop(now + 0.12);
-            } else if (type === 'victory') {
-                osc.type = 'sine';
-                const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
-                notes.forEach((freq, idx) => {
-                    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
-                });
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
-                osc.start(now);
-                osc.stop(now + 0.75);
-            } else if (type === 'gameover') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(180, now);
-                osc.frequency.linearRampToValueAtTime(40, now + 0.8);
-                gain.gain.setValueAtTime(0.15, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
-                osc.start(now);
-                osc.stop(now + 0.8);
-            }
+        if (type === 'hit') {
+            osc.type = 'square'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+            gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now); osc.stop(now + 0.1);
+        } else if (type === 'miss') {
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.2);
+            gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.start(now); osc.stop(now + 0.2);
+        } else if (type === 'fever') {
+            osc.type = 'sine'; osc.frequency.setValueAtTime(500, now); osc.frequency.linearRampToValueAtTime(1000, now + 0.3);
+            gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
+        } else if (type === 'buy') {
+            osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.setValueAtTime(1200, now + 0.1);
+            gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
         }
+    }
 
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+    const monsterFaces = ['👾', '👽', '😈', '👹', '👻', '🤖', '🦇', '🦠'];
+    
+    let level = 1;
+    let targetScore = 100; // 降低首關門檻，增加回饋感
+    let currentFactor = 2;
+    let score = 0;
+    let energy = 0;
+    
+    let hp = 5;
+    let maxHp = 5;
+    let coins = 0; 
+    let coinMultiplier = 1;
+    let feverDuration = 4000; 
 
-        const DIFFICULTY = {
-            easy: {
-                maxVal: 20,
-                factors: [2, 3, 5, 7],
-                targets: [4, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20],
-                speed: 0.20, 
-                spawnRate: 200 
-            },
-            medium: {
-                maxVal: 50,
-                factors: [2, 3, 5, 7, 11],
-                targets: [12, 15, 18, 20, 24, 25, 27, 28, 30, 32, 33, 35, 36, 40, 42, 44, 45, 48, 50],
-                speed: 0.30, 
-                spawnRate: 160 
-            },
-            hard: {
-                maxVal: 100,
-                factors: [2, 3, 5, 7, 11, 13],
-                targets: [24, 28, 30, 36, 42, 44, 45, 48, 50, 54, 55, 56, 60, 63, 64, 65, 70, 72, 75, 77, 80, 81, 84, 88, 90, 96, 99, 100],
-                speed: 0.40, 
-                spawnRate: 120 
-            }
-        };
+    let gameStarted = false;
+    let isFeverMode = false;
+    let isCooldown = false; // 新增：防誤觸冷卻狀態
+    let isGameOver = false;
+    let isPaused = true; 
+    let monsters = [];
+    let spawnTimer;
+    let feverInterval; 
 
-        let currentDiff = 'easy';
-        let score = 0;
-        let level = 1;
-        let lives = 5; 
-        let gameOver = false;
-        let gameActive = false;
-        let levelComplete = false;
-        let frameCount = 0;
-        let shakeAmount = 0; // 電玩畫面晃動
+    function getAvailableFactors() {
+        if (level === 1) return [2, 3, 4, 5, 10, 11]; 
+        if (level === 2) return [2, 3, 4, 5, 6, 7, 9, 10, 11, 13]; 
+        return [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13]; 
+    }
 
-        let maxMonstersInLevel = 8;
-        let monstersSpawned = 0;
+    const board = document.getElementById('game-board');
+    const scoreEl = document.getElementById('score');
+    const targetInfoEl = document.getElementById('target-info');
+    const levelBadge = document.getElementById('level-badge');
+    const hpDisplay = document.getElementById('hp-display');
+    const coinDisplay = document.getElementById('coin-display');
+    const energyBar = document.getElementById('energy-bar');
+    const bulletDisplay = document.getElementById('current-bullet');
+    const bulletLabel = document.getElementById('bullet-label');
+    const reloadBtns = document.querySelectorAll('.reload-btn');
+    const container = document.getElementById('game-container');
+    const sysOverlay = document.getElementById('sys-overlay');
+    const shopOverlay = document.getElementById('shop-overlay');
+    const startOverlay = document.getElementById('start-overlay');
 
-        const shooter = {
-            x: 430,
-            y: 380,
-            angle: -Math.PI / 2,
-            activeBullet: 2,
-            nextBullet: 3
-        };
+    function updateStatsUI() {
+        hpDisplay.textContent = '❤️'.repeat(hp) + '🖤'.repeat(maxHp - hp);
+        coinDisplay.textContent = `🪙 ${coins}`;
+        scoreEl.textContent = score;
+    }
 
-        const trashCan = {
-            x: 80,
-            y: 375,
-            radius: 25,
-            id: 'trash_can_target'
-        };
+    function startGame() {
+        initAudio();
+        startOverlay.style.display = 'none';
+        coins = 20; 
+        gameStarted = true;
+        isPaused = false;
+        
+        updateStatsUI();
+        loadNextBullet();
+        spawnMonsterLoop(); 
+        requestAnimationFrame(gameLoop);
+    }
 
-        let monsters = [];
-        let bullets = [];
-        let particles = [];
-        let textPopups = [];
-        let trackPoints = []; 
-        let lockedMonster = null; 
+    function loadNextBullet() {
+        if (isFeverMode || isCooldown || isGameOver || isPaused) return;
+        const currentLevelFactors = getAvailableFactors();
+        let next = currentFactor;
+        while (next === currentFactor) {
+            next = currentLevelFactors[Math.floor(Math.random() * currentLevelFactors.length)];
+        }
+        currentFactor = next;
+        bulletDisplay.textContent = currentFactor;
+    }
 
-        function initTrack() {
-            const densePoints = [];
+    reloadBtns.forEach(btn => {
+        btn.addEventListener('pointerdown', () => {
+            if (!gameStarted || isGameOver || isPaused || isFeverMode || isCooldown) return;
+            initAudio(); 
             
-            // 橫排 1 (Y = 70) 
-            for (let x = -40; x <= 680; x += 0.5) {
-                densePoints.push({ x, y: 70 });
-            }
-            
-            // 右側折返圓 (圓心 680, 130)
-            const cx1 = 680, cy1 = 130, r1 = 60;
-            for (let angle = -Math.PI / 2; angle <= Math.PI / 2; angle += 0.005) {
-                densePoints.push({
-                    x: cx1 + Math.cos(angle) * r1,
-                    y: cy1 + Math.sin(angle) * r1
-                });
-            }
-            
-            // 橫排 2 (Y = 190)
-            for (let x = 680; x >= 120; x -= 0.5) {
-                densePoints.push({ x, y: 190 });
-            }
-            
-            // 左側折返圓 (圓心 120, 250)
-            const cx2 = 120, cy2 = 250, r2 = 60;
-            for (let angle = -Math.PI / 2; angle >= -3 * Math.PI / 2; angle -= 0.005) {
-                densePoints.push({
-                    x: cx2 + Math.cos(angle) * r2,
-                    y: cy2 + Math.sin(angle) * r2
-                });
-            }
-            
-            // 橫排 3 (Y = 310)
-            for (let x = 120; x <= 740; x += 0.5) {
-                densePoints.push({ x, y: 310 });
-            }
-
-            // 等間距 1.0 像素重新採樣 (確保滾動完全流暢)
-            trackPoints = [];
-            if (densePoints.length === 0) return;
-
-            trackPoints.push(densePoints[0]);
-            let lastPt = densePoints[0];
-            let accumulatedDist = 0;
-            const targetStep = 1.0; 
-
-            for (let i = 1; i < densePoints.length; i++) {
-                const pt = densePoints[i];
-                const dx = pt.x - lastPt.x;
-                const dy = pt.y - lastPt.y;
-                const d = Math.hypot(dx, dy);
-
-                accumulatedDist += d;
-
-                while (accumulatedDist >= targetStep) {
-                    const overshot = accumulatedDist - targetStep;
-                    const ratio = (d - overshot) / d;
-                    const interpX = lastPt.x + dx * ratio;
-                    const interpY = lastPt.y + dy * ratio;
-
-                    const newPt = { x: interpX, y: interpY };
-                    trackPoints.push(newPt);
-
-                    lastPt = newPt;
-                    accumulatedDist = overshot;
-                }
-                lastPt = pt;
-            }
-        }
-
-        function drawTrack() {
-            ctx.save();
-            // 底座陰影
-            ctx.lineWidth = 16;
-            ctx.strokeStyle = '#0a101d'; 
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.beginPath();
-            if (trackPoints.length > 0) {
-                ctx.moveTo(trackPoints[0].x, trackPoints[0].y);
-                for (let i = 1; i < trackPoints.length; i++) {
-                    ctx.lineTo(trackPoints[i].x, trackPoints[i].y);
-                }
-                ctx.stroke();
-            }
-
-            // 發光軌道外框
-            ctx.lineWidth = 8;
-            ctx.strokeStyle = '#1d2a45';
-            ctx.stroke();
-
-            // 中心微發光引導線
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = '#6366f1';
-            ctx.setLineDash([10, 6]);
-            ctx.beginPath();
-            if (trackPoints.length > 0) {
-                ctx.moveTo(trackPoints[0].x, trackPoints[0].y);
-                for (let i = 1; i < trackPoints.length; i++) {
-                    ctx.lineTo(trackPoints[i].x, trackPoints[i].y);
-                }
-                ctx.stroke();
-            }
-            ctx.setLineDash([]);
-
-            // 終點黑洞門
-            if (trackPoints.length > 0) {
-                const endPt = trackPoints[trackPoints.length - 1];
-                // 發光外框
-                const portalPulse = 20 + Math.sin(Date.now() / 200) * 3;
-                ctx.beginPath();
-                ctx.arc(endPt.x, endPt.y, portalPulse, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
-                ctx.fill();
-                ctx.strokeStyle = '#ef4444';
-                ctx.lineWidth = 2.5;
-                ctx.stroke();
-
-                // 中心深色渦旋
-                ctx.beginPath();
-                ctx.arc(endPt.x, endPt.y, 14, 0, Math.PI * 2);
-                ctx.fillStyle = '#05070a';
-                ctx.fill();
-
-                ctx.fillStyle = '#f87171';
-                ctx.font = '900 8px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText("PORTAL", endPt.x, endPt.y);
-            }
-            ctx.restore();
-        }
-
-        class Monster {
-            constructor(val) {
-                this.value = val;
-                this.trackIndex = 0; 
-                this.radius = 18;
-                this.targetRadius = 18;
-                this.anger = 0; 
-                this.id = Math.random();
-                this.isPullingBack = false; 
-                // 隨機生成獨特配色
-                const hues = [160, 200, 240, 275, 320];
-                this.baseHue = hues[Math.floor(Math.random() * hues.length)];
-            }
-
-            update() {
-                this.radius += (this.targetRadius - this.radius) * 0.15;
-                if (this.anger > 0) this.anger -= 1.2;
-            }
-
-            draw() {
-                if (this.trackIndex >= trackPoints.length) return;
-                const pt = trackPoints[Math.floor(this.trackIndex)];
-
-                ctx.save();
-                ctx.translate(pt.x, pt.y);
-
-                // 計算主體顏色
-                let fillColor = `hsla(${this.baseHue}, 75%, 25%, 0.95)`;
-                let strokeColor = `hsl(${this.baseHue}, 85%, 55%)`;
-
-                if (this.anger > 0) {
-                    // 出錯憤怒，漸變為警示紅
-                    fillColor = '#6b1111';
-                    strokeColor = '#f43f5e';
-                } else if (this.value <= 3) {
-                    // 血量低，呈現淺金/微弱狀態
-                    fillColor = '#1e293b';
-                    strokeColor = '#e2e8f0';
-                }
-
-                // 繪製怪獸陰影
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = strokeColor;
-
-                // 1. 繪製可愛的外置觸角大眼睛 (放在主體下方/後方渲染，產生遮擋層次感)
-                const eyeRadius = this.radius * 0.28;
-                const eyeOffset = this.radius * 0.45;
-                const eyeY = -this.radius * 0.85;
-
-                // 左眼外框
-                ctx.beginPath();
-                ctx.arc(-eyeOffset, eyeY, eyeRadius, 0, Math.PI * 2);
-                ctx.fillStyle = fillColor;
-                ctx.fill();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = strokeColor;
-                ctx.stroke();
-
-                // 右眼外框
-                ctx.beginPath();
-                ctx.arc(eyeOffset, eyeY, eyeRadius, 0, Math.PI * 2);
-                ctx.fillStyle = fillColor;
-                ctx.fill();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = strokeColor;
-                ctx.stroke();
-
-                // 眼白與眼珠
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.arc(-eyeOffset, eyeY, eyeRadius * 0.55, 0, Math.PI * 2);
-                ctx.arc(eyeOffset, eyeY, eyeRadius * 0.55, 0, Math.PI * 2);
-                ctx.fill();
-
-                if (this.anger > 0) {
-                    // 憤怒小紅瞳孔
-                    ctx.fillStyle = '#f43f5e';
-                    ctx.beginPath();
-                    ctx.arc(-eyeOffset, eyeY, eyeRadius * 0.3, 0, Math.PI * 2);
-                    ctx.arc(eyeOffset, eyeY, eyeRadius * 0.3, 0, Math.PI * 2);
-                    ctx.fill();
-                } else if (this.value <= 3) {
-                    // 緊張/快消除的圓滾滾黑眼珠
-                    ctx.fillStyle = '#000000';
-                    ctx.beginPath();
-                    ctx.arc(-eyeOffset, eyeY + 0.5, eyeRadius * 0.4, 0, Math.PI * 2);
-                    ctx.arc(eyeOffset, eyeY + 0.5, eyeRadius * 0.4, 0, Math.PI * 2);
-                    ctx.fill();
-                } else {
-                    // 正常開心俏皮眼珠
-                    ctx.fillStyle = '#000000';
-                    ctx.beginPath();
-                    ctx.arc(-eyeOffset + 0.8, eyeY, eyeRadius * 0.35, 0, Math.PI * 2);
-                    ctx.arc(eyeOffset - 0.8, eyeY, eyeRadius * 0.35, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                // 2. 繪製怪獸圓形身體主體
-                ctx.beginPath();
-                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = fillColor;
-                ctx.fill();
-                ctx.lineWidth = 2.5;
-                ctx.strokeStyle = strokeColor;
-                ctx.stroke();
-
-                // 取消畫筆發光，繪製嘴巴表情與數字
-                ctx.shadowBlur = 0;
-
-                // 3. 繪製嘴巴表情 (完全放在身體底部，避免遮蔽正中央的數字)
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 1.8;
-                ctx.beginPath();
-                if (this.anger > 0) {
-                    // 生氣大扁嘴
-                    ctx.moveTo(-this.radius * 0.25, this.radius * 0.55);
-                    ctx.lineTo(this.radius * 0.25, this.radius * 0.55);
-                } else if (this.value <= 3) {
-                    // 緊張張口 (小圓圈)
-                    ctx.arc(0, this.radius * 0.55, 2.5, 0, Math.PI * 2);
-                } else {
-                    // 貼在底部的弧形微笑
-                    ctx.arc(0, this.radius * 0.40, this.radius * 0.2, 0.1, Math.PI - 0.1);
-                }
-                ctx.stroke();
-
-                // 4. 繪製完全居中、高對比、不卡視野的巨大數字
-                const fontSize = Math.max(12, Math.min(22, Math.floor(this.radius * 0.85)));
-                ctx.font = `900 ${fontSize}px Inter, system-ui, -apple-system, sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-
-                // 黑色加粗描邊效果，使白字在任何背景下皆極度醒目
-                ctx.strokeStyle = '#05070a';
-                ctx.lineWidth = 4;
-                ctx.strokeText(this.value, 0, 1.5); // 微調 y 軸使其完美視覺置中
-                
-                // 白色填滿文字
-                ctx.fillStyle = '#ffffff';
-                ctx.fillText(this.value, 0, 1.5);
-
-                ctx.restore();
-
-                // 繪製高亮鎖定瞄準框
-                if (lockedMonster && lockedMonster.id === this.id) {
-                    ctx.save();
-                    ctx.translate(pt.x, pt.y);
-                    ctx.strokeStyle = '#fbbf24';
-                    ctx.lineWidth = 2;
-                    
-                    const pulse = 6 + Math.sin(Date.now() / 120) * 3;
-                    const size = this.radius + pulse;
-                    ctx.setLineDash([4, 4]);
-                    ctx.beginPath();
-                    ctx.arc(0, 0, size, 0, Math.PI * 2);
-                    ctx.stroke();
-
-                    // 精準十字定位標誌
-                    ctx.setLineDash([]);
-                    ctx.beginPath();
-                    ctx.moveTo(-size, 0); ctx.lineTo(-size + 6, 0);
-                    ctx.moveTo(size, 0); ctx.lineTo(size - 6, 0);
-                    ctx.moveTo(0, -size); ctx.lineTo(0, -size + 6);
-                    ctx.moveTo(0, size); ctx.lineTo(0, size - 6);
-                    ctx.stroke();
-
-                    ctx.fillStyle = '#fbbf24';
-                    ctx.font = '900 8px monospace';
-                    ctx.fillText('LOCK ON', 0, -size - 5);
-                    ctx.restore();
-                }
-            }
-        }
-
-        class Bullet {
-            constructor(x, y, angle, val, targetMonster) {
-                this.x = x;
-                this.y = y;
-                this.angle = angle;
-                this.value = val; 
-                this.speed = 16;
-                this.radius = 10;
-                this.isActive = true;
-                this.targetMonster = targetMonster; 
-                this.trail = []; // 粒子尾跡
-            }
-
-            update() {
-                // 記錄尾跡
-                this.trail.push({x: this.x, y: this.y});
-                if (this.trail.length > 5) this.trail.shift();
-
-                if (this.targetMonster) {
-                    let targetPt = null;
-                    if (this.targetMonster.id === 'trash_can_target') {
-                        targetPt = trashCan;
-                    } else {
-                        const found = monsters.find(m => m.id === this.targetMonster.id);
-                        if (found) {
-                            const idx = Math.floor(found.trackIndex);
-                            if (idx < trackPoints.length) {
-                                targetPt = trackPoints[idx];
-                            }
-                        }
-                    }
-
-                    if (targetPt) {
-                        const dx = targetPt.x - this.x;
-                        const dy = targetPt.y - this.y;
-                        const dist = Math.hypot(dx, dy);
-
-                        if (dist > 5) {
-                            this.x += (dx / dist) * this.speed;
-                            this.y += (dy / dist) * this.speed;
-                            shooter.angle = Math.atan2(dy, dx);
-                        } else {
-                            this.x = targetPt.x;
-                            this.y = targetPt.y;
-                        }
-                    } else {
-                        this.x += Math.cos(this.angle) * this.speed;
-                        this.y += Math.sin(this.angle) * this.speed;
-                    }
-                } else {
-                    this.x += Math.cos(this.angle) * this.speed;
-                    this.y += Math.sin(this.angle) * this.speed;
-                }
-
-                if (this.x < -20 || this.x > 820 || this.y < -20 || this.y > 440) {
-                    this.isActive = false;
-                }
-            }
-
-            draw() {
-                // 繪製發光尾跡
-                ctx.save();
-                for (let i = 0; i < this.trail.length; i++) {
-                    const pt = this.trail[i];
-                    ctx.beginPath();
-                    ctx.arc(pt.x, pt.y, this.radius * (i / this.trail.length), 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(99, 102, 241, ${0.15 * (i / this.trail.length)})`;
-                    ctx.fill();
-                }
-
-                // 子彈主體
-                ctx.translate(this.x, this.y);
-                ctx.beginPath();
-                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#6366f1';
-                ctx.fill();
-                ctx.lineWidth = 1.5;
-                ctx.strokeStyle = '#ffffff';
-                ctx.stroke();
-
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'black 11px Inter, sans-serif';
-                ctx.fontWeight = '900';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(this.value, 0, 0);
-                ctx.restore();
-            }
-        }
-
-        class Particle {
-            constructor(x, y, color) {
-                this.x = x;
-                this.y = y;
-                this.color = color;
-                const ang = Math.random() * Math.PI * 2;
-                const spd = 1.5 + Math.random() * 4.5;
-                this.vx = Math.cos(ang) * spd;
-                this.vy = Math.sin(ang) * spd;
-                this.alpha = 1;
-                this.decay = 0.03 + Math.random() * 0.02;
-            }
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-                this.alpha -= this.decay;
-            }
-            draw() {
-                ctx.save();
-                ctx.globalAlpha = this.alpha;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
-                ctx.fill();
-                ctx.restore();
-            }
-        }
-
-        class TextPopup {
-            constructor(x, y, text, color) {
-                this.x = x;
-                this.y = y;
-                this.text = text;
-                this.color = color;
-                this.alpha = 1;
-            }
-            update() {
-                this.y -= 0.8;
-                this.alpha -= 0.025;
-            }
-            draw() {
-                ctx.save();
-                ctx.globalAlpha = this.alpha;
-                ctx.fillStyle = this.color;
-                ctx.font = 'black 14px Inter, sans-serif';
-                ctx.fontWeight = '900';
-                ctx.textAlign = 'center';
-                ctx.fillText(this.text, this.x, this.y);
-                ctx.restore();
-            }
-        }
-
-        function drawShooter() {
-            ctx.save();
-            ctx.translate(shooter.x, shooter.y);
-            ctx.rotate(shooter.angle);
-
-            // 圓形基座外發光
-            ctx.beginPath();
-            ctx.arc(0, 0, 24, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(15, 23, 42, 0.4)';
-            ctx.fill();
-
-            // 砲管
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(8, -9, 28, 18);
-            ctx.lineWidth = 1.8;
-            ctx.strokeStyle = '#4f46e5';
-            ctx.strokeRect(8, -9, 28, 18);
-
-            // 機體心臟
-            ctx.beginPath();
-            ctx.arc(0, 0, 20, 0, Math.PI * 2);
-            ctx.fillStyle = '#0f172a';
-            ctx.fill();
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = '#6366f1';
-            ctx.stroke();
-
-            ctx.restore();
-
-            // 畫砲台中心寫著目前子彈數目的核心
-            ctx.save();
-            ctx.translate(shooter.x, shooter.y);
-            ctx.beginPath();
-            ctx.arc(0, 0, 11, 0, Math.PI * 2);
-            ctx.fillStyle = '#fbbf24';
-            ctx.fill();
-
-            ctx.fillStyle = '#0f172a';
-            ctx.font = 'black 12px Inter, sans-serif';
-            ctx.fontWeight = '900';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(shooter.activeBullet, 0, 0);
-            ctx.restore();
-        }
-
-        function drawTrashCan() {
-            ctx.save();
-            ctx.translate(trashCan.x, trashCan.y);
-
-            // 呼吸外發光圈
-            const trashPulse = 26 + Math.sin(Date.now() / 150) * 2.5;
-            ctx.beginPath();
-            ctx.arc(0, 0, trashPulse, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(168, 85, 247, 0.08)';
-            ctx.fill();
-
-            // 發光圓邊
-            ctx.strokeStyle = '#a855f7';
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.arc(0, 0, trashCan.radius, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // 主體圓盤
-            ctx.beginPath();
-            ctx.arc(0, 0, trashCan.radius - 4, 0, Math.PI * 2);
-            ctx.fillStyle = '#0f172a';
-            ctx.fill();
-            ctx.strokeStyle = '#c084fc';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            ctx.fillStyle = '#a855f7';
-            ctx.font = '14px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText("🗑️", 0, -3);
-
-            ctx.fillStyle = '#c084fc';
-            ctx.font = '900 8px monospace';
-            ctx.fillText("RECYCLE", 0, 11);
-
-            ctx.restore();
-
-            if (lockedMonster && lockedMonster.id === trashCan.id) {
-                ctx.save();
-                ctx.translate(trashCan.x, trashCan.y);
-                ctx.strokeStyle = '#fbbf24';
-                ctx.lineWidth = 1.8;
-                const pulse = 4 + Math.sin(Date.now() / 150) * 2;
-                const size = trashCan.radius + pulse;
-                ctx.setLineDash([3, 3]);
-                ctx.beginPath();
-                ctx.arc(0, 0, size, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.restore();
-            }
-        }
-
-        function getUsableFactor() {
-            const allowed = DIFFICULTY[currentDiff].factors;
-            if (monsters.length === 0) {
-                // 如果場上空無一物，隨機發放
-                return allowed[Math.floor(Math.random() * allowed.length)];
-            }
-            // 掃描場上存活的所有怪物，尋找整除因數
-            const candidateFactors = [];
-            for (let mon of monsters) {
-                for (let f of allowed) {
-                    if (mon.value % f === 0) {
-                        if (!candidateFactors.includes(f)) {
-                            candidateFactors.push(f);
-                        }
-                    }
-                }
-            }
-
-            if (candidateFactors.length > 0) {
-                // 自動挑選可以整除當前場上至少一個怪物的因數子彈
-                return candidateFactors[Math.floor(Math.random() * candidateFactors.length)];
-            }
-            // 兜底（理論上不會進來，因為都是合數）
-            return allowed[Math.floor(Math.random() * allowed.length)];
-        }
-
-        function fireBullet(target) {
-            if (!gameActive || gameOver || levelComplete || !target) return;
-            playSound('shoot');
-
-            const b = new Bullet(shooter.x, shooter.y, shooter.angle, shooter.activeBullet, target);
-            bullets.push(b);
-
-            // 更新裝填子彈：下一發自動補位，新備用彈採用智能探測
-            shooter.activeBullet = shooter.nextBullet;
-            shooter.nextBullet = getUsableFactor();
-
-            document.getElementById('nextBulletBadge').textContent = shooter.nextBullet;
-        }
-
-        function swapBullets() {
-            if (!gameActive || gameOver || levelComplete) return;
-            const temp = shooter.activeBullet;
-            shooter.activeBullet = shooter.nextBullet;
-            shooter.nextBullet = temp;
-            document.getElementById('nextBulletBadge').textContent = shooter.nextBullet;
-        }
-
-        function discardBulletDirectly() {
-            if (!gameActive || gameOver || levelComplete) return;
-            playSound('discard');
-
-            textPopups.push(new TextPopup(shooter.x, shooter.y - 28, "DISCARDED 🗑️", '#a855f7'));
-            for (let i = 0; i < 6; i++) {
-                particles.push(new Particle(shooter.x, shooter.y, '#a855f7'));
-            }
-
-            // 直接刷新彈藥：採用智能探測
-            shooter.activeBullet = shooter.nextBullet;
-            shooter.nextBullet = getUsableFactor();
-            document.getElementById('nextBulletBadge').textContent = shooter.nextBullet;
-
-            if (lockedMonster && lockedMonster.id === 'trash_can_target') {
-                lockedMonster = null;
-            }
-        }
-
-        function checkCollisions() {
-            for (let bIndex = bullets.length - 1; bIndex >= 0; bIndex--) {
-                const b = bullets[bIndex];
-                if (!b.targetMonster) continue;
-
-                if (b.targetMonster.id === 'trash_can_target') {
-                    const dist = Math.hypot(b.x - trashCan.x, b.y - trashCan.y);
-                    if (dist < trashCan.radius + b.radius + 2) {
-                        bullets.splice(bIndex, 1);
-                        playSound('discard');
-                        
-                        if (lockedMonster && lockedMonster.id === 'trash_can_target') {
-                            lockedMonster = null;
-                        }
-
-                        for (let i = 0; i < 8; i++) {
-                            particles.push(new Particle(trashCan.x, trashCan.y, '#a855f7'));
-                        }
-                        textPopups.push(new TextPopup(trashCan.x, trashCan.y - 15, "RECYCLED", '#a855f7'));
-                    }
-                    continue;
-                }
-
-                const m = monsters.find(mon => mon.id === b.targetMonster.id);
-                if (m) {
-                    const mPt = trackPoints[Math.floor(m.trackIndex)];
-                    const dist = Math.hypot(b.x - mPt.x, b.y - mPt.y);
-
-                    if (dist < m.radius + b.radius + 3) {
-                        bullets.splice(bIndex, 1);
-                        
-                        if (lockedMonster && lockedMonster.id === m.id) {
-                            lockedMonster = null;
-                        }
-
-                        handleMathHit(m, b.value, mPt.x, mPt.y);
-                    }
-                }
-            }
-        }
-
-        function handleMathHit(monster, bulletVal, hitX, hitY) {
-            const monsterVal = monster.value;
-
-            if (monsterVal % bulletVal === 0) {
-                // 答對（整除）
-                const result = monsterVal / bulletVal;
-                playSound('correct');
-                shakeAmount = 4; // 輕微碰撞抖動
-
-                for (let i = 0; i < 8; i++) {
-                    particles.push(new Particle(hitX, hitY, '#10b981'));
-                }
-
-                if (result === 1) {
-                    playSound('explode');
-                    // 當前怪物消滅，觸發前方所有怪物「往後倒退補位」狀態
-                    const eliminatedIndex = monster.trackIndex; 
-                    monsters = monsters.filter(m => m.id !== monster.id);
-                    
-                    for (let mon of monsters) {
-                        if (mon.trackIndex > eliminatedIndex) {
-                            mon.isPullingBack = true;
-                        }
-                    }
-
-                    const earnScore = 50;
-                    score += earnScore;
-                    textPopups.push(new TextPopup(hitX, hitY - 15, `CORRECT! ÷${bulletVal} (+${earnScore})`, '#10b981'));
-                } else {
-                    monster.value = result;
-                    monster.targetRadius = Math.max(14, monster.radius - 2);
-                    const earnScore = 15;
-                    score += earnScore;
-                    textPopups.push(new TextPopup(hitX, hitY - 15, `÷${bulletVal} (+${earnScore})`, '#34d399'));
-                }
+            if (coins >= 2) {
+                coins -= 2;
             } else {
-                // 答錯（相乘懲罰）
-                const capLimit = DIFFICULTY[currentDiff].maxVal * 1.5;
-                shakeAmount = 10; // 劇烈畫面抖動
-
-                if (monsterVal >= capLimit) {
-                    // 超過保護上限，啟動護盾防止死局
-                    playSound('wrong');
-                    for (let i = 0; i < 8; i++) {
-                        particles.push(new Particle(hitX, hitY, '#f43f5e'));
-                    }
-                    monster.anger = 100;
-                    textPopups.push(new TextPopup(hitX, hitY - 15, `SHIELD ACTIVATED! 🛡️`, '#f43f5e'));
-                } else {
-                    const result = monsterVal * bulletVal;
-                    playSound('wrong');
-
-                    for (let i = 0; i < 8; i++) {
-                        particles.push(new Particle(hitX, hitY, '#ef4444'));
-                    }
-
-                    monster.value = result;
-                    monster.targetRadius = Math.min(32, monster.radius + 4);
-                    monster.anger = 100;
-
-                    textPopups.push(new TextPopup(hitX, hitY - 15, `WRONG! ×${bulletVal}`, '#ef4444'));
-                }
-            }
-
-            document.getElementById('scoreVal').textContent = score;
-        }
-
-        function spawnMonster() {
-            const config = DIFFICULTY[currentDiff];
-            let val = 4;
-
-            // 隨機選一個合數
-            val = config.targets[Math.floor(Math.random() * config.targets.length)];
-            monsters.push(new Monster(val));
-        }
-
-        function updateLivesUI() {
-            const container = document.getElementById('livesContainer');
-            container.innerHTML = '';
-            for (let i = 0; i < 5; i++) {
-                const heart = document.createElement('i');
-                heart.className = i < lives ? "fa-solid fa-heart text-rose-500 text-xs" : "fa-regular fa-heart text-slate-700 text-xs";
-                container.appendChild(heart);
-            }
-        }
-
-        function startGame() {
-            document.getElementById('tutorialOverlay').classList.add('hidden');
-            resetGame();
-        }
-
-        function resetGame() {
-            score = 0;
-            level = 1;
-            lives = 5; 
-            gameOver = false;
-            gameActive = true;
-            levelComplete = false;
-            monsters = [];
-            bullets = [];
-            particles = [];
-            textPopups = [];
-            frameCount = 0;
-            shakeAmount = 0;
-            lockedMonster = null;
-
-            maxMonstersInLevel = 8; 
-            monstersSpawned = 0;
-
-            document.getElementById('scoreVal').textContent = score;
-            document.getElementById('levelVal').textContent = level;
-            document.getElementById('progressVal').textContent = `${monstersSpawned}/${maxMonstersInLevel}`;
-            updateLivesUI();
-
-            // 初始分配子彈
-            const activeFactors = DIFFICULTY[currentDiff].factors;
-            shooter.activeBullet = activeFactors[Math.floor(Math.random() * activeFactors.length)];
-            shooter.nextBullet = activeFactors[Math.floor(Math.random() * activeFactors.length)];
-            document.getElementById('nextBulletBadge').textContent = shooter.nextBullet;
-
-            document.getElementById('gameOverlay').classList.add('hidden');
-            document.getElementById('levelCompleteOverlay').classList.add('hidden');
-
-            // 派發第一隻怪獸
-            spawnMonster();
-            monstersSpawned++;
-            document.getElementById('progressVal').textContent = `${monstersSpawned}/${maxMonstersInLevel}`;
-        }
-
-        function nextLevel() {
-            level++;
-            document.getElementById('levelVal').textContent = level;
-            levelComplete = false;
-            document.getElementById('levelCompleteOverlay').classList.add('hidden');
-            
-            maxMonstersInLevel = 8 + level * 2;
-            monstersSpawned = 0;
-            monsters = [];
-            bullets = [];
-            particles = [];
-            textPopups = [];
-            lockedMonster = null;
-            shakeAmount = 0;
-            
-            spawnMonster();
-            monstersSpawned++;
-            document.getElementById('progressVal').textContent = `${monstersSpawned}/${maxMonstersInLevel}`;
-            
-            textPopups.push(new TextPopup(400, 200, `STAGE Lv.${level} START!`, '#22d3ee'));
-        }
-
-        function triggerLevelComplete() {
-            levelComplete = true;
-            playSound('victory');
-            document.getElementById('levelCompleteScore').textContent = score;
-            document.getElementById('levelCompleteOverlay').classList.remove('hidden');
-        }
-
-        function setDifficulty(diff) {
-            currentDiff = diff;
-            const btns = {
-                easy: document.getElementById('btnDiffEasy'),
-                medium: document.getElementById('btnDiffMedium'),
-                hard: document.getElementById('btnDiffHard')
-            };
-
-            for (let k in btns) {
-                if (k === diff) {
-                    btns[k].className = `px-3.5 py-1.5 rounded-xl font-bold transition-all border border-indigo-600 bg-indigo-600/20 text-indigo-300`;
-                } else {
-                    btns[k].className = `px-3.5 py-1.5 rounded-xl font-bold transition-all border border-slate-800 text-slate-400`;
-                }
-            }
-            resetGame();
-        }
-
-        function update() {
-            if (!gameActive || gameOver || levelComplete) return;
-
-            frameCount++;
-
-            // 怪物派發管理
-            if (monstersSpawned < maxMonstersInLevel) {
-                const spacingSteps = 38; 
-                const canSpawn = monsters.length === 0 || monsters[monsters.length - 1].trackIndex > spacingSteps;
-                const spawnRate = DIFFICULTY[currentDiff].spawnRate;
-
-                if (canSpawn && frameCount % spawnRate === 0) {
-                    spawnMonster();
-                    monstersSpawned++;
-                    document.getElementById('progressVal').textContent = `${monstersSpawned}/${maxMonstersInLevel}`;
-                }
-            } else {
-                if (monsters.length === 0 && !gameOver && !levelComplete) {
-                    triggerLevelComplete();
-                }
-            }
-
-            const baseSpeed = DIFFICULTY[currentDiff].speed * (1 + level * 0.02); 
-            const pullSpeed = baseSpeed * 3.5; 
-
-            // 推進所有球球前進
-            for (let mon of monsters) {
-                mon.trackIndex += baseSpeed;
-            }
-
-            // 自後向前排序
-            monsters.sort((a, b) => b.trackIndex - a.trackIndex);
-
-            // 完美無間隙磁吸物理
-            if (monsters.length > 0) {
-                const spacingSteps = 38;
-                for (let i = monsters.length - 1; i >= 0; i--) {
-                    const currentMon = monsters[i];
-                    const backMon = (i < monsters.length - 1) ? monsters[i + 1] : null;
-
-                    if (backMon) {
-                        const gap = currentMon.trackIndex - backMon.trackIndex;
-
-                        if (currentMon.isPullingBack) {
-                            if (gap > spacingSteps) {
-                                currentMon.trackIndex = Math.max(currentMon.trackIndex - pullSpeed, backMon.trackIndex + spacingSteps);
-                            } else {
-                                currentMon.trackIndex = backMon.trackIndex + spacingSteps;
-                                if (!backMon.isPullingBack) {
-                                    currentMon.isPullingBack = false;
-                                }
-                            }
-                        } else {
-                            if (gap < spacingSteps) {
-                                currentMon.trackIndex = backMon.trackIndex + spacingSteps;
-                            }
-                        }
-                    } else {
-                        currentMon.isPullingBack = false;
-                    }
-                }
-            }
-
-            // 終點臨界生命損失判定
-            for (let i = monsters.length - 1; i >= 0; i--) {
-                const mon = monsters[i];
-                mon.update();
-
-                if (mon.trackIndex >= trackPoints.length - 5) {
-                    if (lockedMonster && lockedMonster.id === mon.id) {
-                        lockedMonster = null;
-                    }
-                    monsters.splice(i, 1);
-                    lives--;
-                    updateLivesUI();
-                    playSound('wrong');
-                    shakeAmount = 15; // 被突破時螢幕強烈震動
-                    textPopups.push(new TextPopup(400, 200, "LIFE LOST! ⚠️", '#f43f5e'));
-
-                    if (lives <= 0) {
-                        gameOver = true;
-                        playSound('gameover');
-                        document.getElementById('overlayTitle').textContent = "GAME OVER";
-                        document.getElementById('overlayDesc').textContent = "沒關係！多玩幾次，你的心算敏捷度一定會大幅提升！";
-                        document.getElementById('overlayScore').textContent = score;
-                        document.getElementById('gameOverlay').classList.remove('hidden');
-                    }
-                }
-            }
-
-            // 更新飛行的子彈
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                const b = bullets[i];
-                b.update();
-                if (!b.isActive) {
-                    bullets.splice(i, 1);
-                }
-            }
-
-            // 更新爆炸特效粒子
-            for (let i = particles.length - 1; i >= 0; i--) {
-                particles[i].update();
-                if (particles[i].alpha <= 0) particles.splice(i, 1);
-            }
-
-            // 更新漂浮提示文字
-            for (let i = textPopups.length - 1; i >= 0; i--) {
-                textPopups[i].update();
-                if (textPopups[i].alpha <= 0) textPopups.splice(i, 1);
-            }
-
-            checkCollisions();
-
-            // 螢幕晃動衰減
-            if (shakeAmount > 0) {
-                shakeAmount *= 0.9;
-                if (shakeAmount < 0.2) shakeAmount = 0;
-            }
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            ctx.save();
-            // 實作電玩感的 Screenshake 晃動畫面
-            if (shakeAmount > 0) {
-                const dx = (Math.random() - 0.5) * shakeAmount;
-                const dy = (Math.random() - 0.5) * shakeAmount;
-                ctx.translate(dx, dy);
-            }
-
-            ctx.fillStyle = '#060911';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 背景科技方格網
-            ctx.strokeStyle = '#0e1424';
-            ctx.lineWidth = 1;
-            const gridSize = 40;
-            for (let x = 0; x < canvas.width; x += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-            }
-            for (let y = 0; y < canvas.height; y += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
-            }
-
-            drawTrack();
-            drawTrashCan();
-
-            // 繪製怪獸、子彈、炮台、爆炸粒子
-            for (let mon of monsters) {
-                mon.draw();
-            }
-
-            for (let b of bullets) {
-                b.draw();
-            }
-
-            drawShooter();
-
-            for (let p of particles) {
-                p.draw();
-            }
-
-            for (let tp of textPopups) {
-                tp.draw();
-            }
-
-            ctx.restore();
-        }
-
-        function loop() {
-            update();
-            draw();
-            requestAnimationFrame(loop);
-        }
-
-        function getCanvasCoords(e) {
-            const rect = canvas.getBoundingClientRect();
-            let clientX = e.clientX;
-            let clientY = e.clientY;
-
-            // 支援行動端 touch 事件與 changedTouches
-            if (e.touches && e.touches.length > 0) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else if (e.changedTouches && e.changedTouches.length > 0) {
-                clientX = e.changedTouches[0].clientX;
-                clientY = e.changedTouches[0].clientY;
+                score = Math.max(0, score - 2); 
             }
             
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-
-            return {
-                x: (clientX - rect.left) * scaleX,
-                y: (clientY - rect.top) * scaleY
-            };
-        }
-
-        function handlePointerDown(e) {
-            if (!gameActive || gameOver || levelComplete) return;
-            const coords = getCanvasCoords(e);
-
-            // 0. 手機與平板專屬快捷操作：點擊畫面正中央的砲台本身，直接快速切換備彈！
-            const distToShooter = Math.hypot(coords.x - shooter.x, coords.y - shooter.y);
-            if (distToShooter < 36) {
-                swapBullets();
-                textPopups.push(new TextPopup(shooter.x, shooter.y - 30, "SWAPPED 🔄", '#818cf8'));
-                for (let i = 0; i < 6; i++) {
-                    particles.push(new Particle(shooter.x, shooter.y, '#818cf8'));
-                }
-                return;
-            }
-
-            // 1. 垃圾桶回收判定
-            const distToTrash = Math.hypot(coords.x - trashCan.x, coords.y - trashCan.y);
-            if (distToTrash < trashCan.radius + 18) {
-                if (lockedMonster && lockedMonster.id === trashCan.id) {
-                    shooter.angle = Math.atan2(trashCan.y - shooter.y, trashCan.x - shooter.x);
-                    fireBullet(trashCan);
-                } else {
-                    lockedMonster = trashCan;
-                    shooter.angle = Math.atan2(trashCan.y - shooter.y, trashCan.x - shooter.x);
-                }
-                return;
-            }
-
-            // 2. 基於「最靠近怪物中心」鎖定判定
-            let closestMonster = null;
-            let minDist = Infinity;
-            // 行動裝置手指接觸面積較大，給予 48px 友善觸控半徑（滑鼠為 36px）
-            const isTouch = e.type && e.type.startsWith('touch');
-            const clickThreshold = isTouch ? 48 : 36;
-
-            for (let mon of monsters) {
-                const idx = Math.floor(mon.trackIndex);
-                if (idx < trackPoints.length) {
-                    const pt = trackPoints[idx];
-                    const dist = Math.hypot(coords.x - pt.x, coords.y - pt.y);
-                    if (dist < clickThreshold) {
-                        if (dist < minDist) {
-                            minDist = dist;
-                            closestMonster = mon;
-                        }
-                    }
-                }
-            }
-
-            if (closestMonster) {
-                if (lockedMonster && lockedMonster.id === closestMonster.id) {
-                    // 二次點擊同一隻鎖定怪物：發射必中追蹤彈
-                    const idx = Math.floor(closestMonster.trackIndex);
-                    const pt = trackPoints[idx];
-                    shooter.angle = Math.atan2(pt.y - shooter.y, pt.x - shooter.x);
-                    fireBullet(closestMonster);
-                } else {
-                    // 首次點擊：鎖定該目標，炮台對準
-                    lockedMonster = closestMonster;
-                    const idx = Math.floor(closestMonster.trackIndex);
-                    const pt = trackPoints[idx];
-                    shooter.angle = Math.atan2(pt.y - shooter.y, pt.x - shooter.x);
-                }
-            } else {
-                // 點擊空白處解除鎖定
-                lockedMonster = null;
-            }
-        }
-
-        // 綁定實體按鍵
-        window.addEventListener('keydown', function (e) {
-            if (e.code === 'Space') {
-                e.preventDefault();
-                swapBullets();
-            } else if (e.code === 'KeyD' || e.code === 'Delete' || e.code === 'Backspace') {
-                e.preventDefault();
-                discardBulletDirectly();
-            }
+            updateStatsUI();
+            loadNextBullet();
         });
+    });
 
-        canvas.addEventListener('mousedown', handlePointerDown);
-        canvas.addEventListener('touchstart', function (e) {
-            e.preventDefault();
-            handlePointerDown(e);
-        }, { passive: false });
+    function spawnMonsterLoop() {
+        if (!isGameOver && !isPaused && monsters.length < 15) { 
+            // 平滑難度曲線：第三關的數字不再直接飆升至 999
+            let minNum, maxNum;
+            if (level === 1) { minNum = 10; maxNum = 50; } 
+            else if (level === 2) { minNum = 50; maxNum = 99; } 
+            else if (level === 3) { minNum = 100; maxNum = 150; } // 緩衝階段
+            else if (level === 4) { minNum = 150; maxNum = 299; } 
+            else { minNum = 300; maxNum = 999; }
+            
+            let num = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+            const currentLevelFactors = getAvailableFactors();
+            const forcedFactor = currentLevelFactors[Math.floor(Math.random() * currentLevelFactors.length)];
+            num = Math.floor(num / forcedFactor) * forcedFactor;
+            if (num === 0) num = forcedFactor;
 
-        window.onload = function() {
-            initTrack();
-            loop();
+            const monster = document.createElement('div');
+            monster.classList.add('monster');
+            monster.innerHTML = `<div class="monster-face">${monsterFaces[Math.floor(Math.random() * monsterFaces.length)]}</div><div class="monster-num">${num}</div>`;
+            monster.dataset.num = num;
+            
+            const side = Math.floor(Math.random() * 4);
+            const size = 75;
+            const bWidth = board.clientWidth; const bHeight = board.clientHeight;
+            const speedBase = 0.5 + (level * 0.3) + (Math.random() * 0.5); 
+            let startX, startY, vx, vy;
+            
+            if (side === 0) { startX = Math.random() * (bWidth - size); startY = -size; vx = (Math.random() - 0.5) * speedBase; vy = speedBase; }
+            else if (side === 1) { startX = bWidth; startY = Math.random() * (bHeight - size); vx = -speedBase; vy = (Math.random() - 0.5) * speedBase; }
+            else if (side === 2) { startX = Math.random() * (bWidth - size); startY = bHeight; vx = (Math.random() - 0.5) * speedBase; vy = -speedBase; }
+            else { startX = -size; startY = Math.random() * (bHeight - size); vx = speedBase; vy = (Math.random() - 0.5) * speedBase; }
+
+            monster.style.left = startX + 'px'; monster.style.top = startY + 'px';
+            board.appendChild(monster);
+            const monsterObj = { el: monster, x: startX, y: startY, vx: vx, vy: vy, size: size };
+            monsters.push(monsterObj);
+
+            monster.addEventListener('pointerdown', (e) => {
+                initAudio();
+                if (!isFeverMode && !isCooldown && !isGameOver && !isPaused) handleHit(monsterObj, e.clientX, e.clientY);
+            });
         }
-    </script>
+        spawnTimer = setTimeout(spawnMonsterLoop, Math.max(800, 2200 - (level * 300)));
+    }
+
+    function handleHit(monsterObj, x, y) {
+        if (!monsterObj.el.parentElement) return;
+        const num = parseInt(monsterObj.el.dataset.num);
+        
+        if (num % currentFactor === 0) {
+            playSFX('hit');
+            
+            let pts = 10; 
+            if ([2, 5, 10].includes(currentFactor)) {
+                pts = 5;
+            } else if (currentFactor === 11) {
+                if (num < 100) pts = 5; 
+                else pts = 15; 
+            } else if (currentFactor === 7) {
+                pts = 15; 
+            } else if (currentFactor === 13) {
+                pts = 20; 
+            }
+            
+            destroyMonster(monsterObj, x, y, pts);
+            addScore(pts);
+            addEnergy(pts); 
+            loadNextBullet(); 
+        } else {
+            playSFX('miss');
+            showFloatingText(`錯誤! 扣血`, x, y, 'text-miss');
+            
+            hp -= 1;
+            updateStatsUI();
+            
+            monsterObj.vx *= -1; monsterObj.vy *= -1;
+            monsterObj.el.style.transform = 'scale(1.2)';
+            setTimeout(() => monsterObj.el.style.transform = 'scale(1)', 150);
+            
+            if (hp <= 0) gameOver();
+        }
+    }
+
+    function destroyMonster(monsterObj, x, y, displayPts) {
+        showFloatingText('+' + displayPts, x, y, 'text-hit');
+        monsterObj.el.remove();
+        monsters = monsters.filter(m => m !== monsterObj);
+    }
+
+    function showFloatingText(text, x, y, className) {
+        const floating = document.createElement('div');
+        floating.className = `floating-text ${className}`; floating.textContent = text;
+        const boardRect = board.getBoundingClientRect();
+        floating.style.left = (x - boardRect.left) + 'px'; floating.style.top = (y - boardRect.top) + 'px';
+        board.appendChild(floating);
+        setTimeout(() => floating.remove(), 1000);
+    }
+
+    function addScore(points) {
+        if(isGameOver || isPaused) return;
+        score += points;
+        scoreEl.textContent = score;
+        if (score >= targetScore) levelUp();
+    }
+
+    function levelUp() {
+        isPaused = true;
+        clearTimeout(spawnTimer);
+        
+        if (isFeverMode) {
+            clearInterval(feverInterval);
+            isFeverMode = false;
+            energy = 0;
+            energyBar.style.width = '0%';
+            container.classList.remove('fever-active');
+        }
+        
+        monsters.forEach(m => m.el.remove());
+        monsters = [];
+        container.classList.remove('warning-active');
+        
+        const baseReward = 100 + (level * 20);
+        const earned = baseReward * coinMultiplier;
+        coins += earned;
+        coinMultiplier = 1; 
+        
+        document.getElementById('earned-coins').textContent = earned;
+        updateShopUI();
+        shopOverlay.style.display = 'flex';
+    }
+
+    function updateShopUI() {
+        document.getElementById('total-coins').textContent = coins;
+        updateStatsUI();
+        
+        document.getElementById('btn-potion').disabled = (coins < 50 || hp >= maxHp);
+        document.getElementById('btn-multiplier').disabled = (coins < 80 || coinMultiplier > 1);
+        document.getElementById('btn-fever').disabled = (coins < 120);
+    }
+
+    function buyItem(type) {
+        if (type === 'potion' && coins >= 50 && hp < maxHp) {
+            coins -= 50; hp += 1; playSFX('buy');
+        } else if (type === 'multiplier' && coins >= 80) {
+            coins -= 80; coinMultiplier = 2; playSFX('buy');
+        } else if (type === 'fever' && coins >= 120) {
+            coins -= 120; feverDuration += 2000; playSFX('buy');
+        }
+        updateShopUI();
+    }
+
+    function startNextLevel() {
+        shopOverlay.style.display = 'none';
+        level++;
+        // 降低升級所需分數的漲幅，增加通關頻率
+        targetScore += 80 + (level * 20); 
+        levelBadge.textContent = `第 ${level} 關`;
+        targetInfoEl.textContent = `目標: ${targetScore}分`;
+        
+        isPaused = false;
+        loadNextBullet();
+        spawnMonsterLoop();
+    }
+
+    function gameOver() {
+        isGameOver = true;
+        clearTimeout(spawnTimer);
+        sysOverlay.style.display = 'flex';
+        container.classList.remove('warning-active', 'fever-active');
+        document.getElementById('sys-title').style.color = '#ff7675';
+        document.getElementById('sys-title').textContent = "💥 失敗了...";
+        document.getElementById('sys-desc').textContent = `血量歸零！你存活到了第 ${level} 關，總分 ${score}`;
+        document.getElementById('restart-btn').style.display = 'block';
+    }
+
+    function addEnergy(amount) {
+        if (isFeverMode || isCooldown) return;
+        energy += amount;
+        if (energy >= 100) { energy = 100; triggerFeverMode(); }
+        energyBar.style.width = energy + '%';
+    }
+
+    function triggerFeverMode() {
+        if (isFeverMode) return;
+        isFeverMode = true;
+        playSFX('fever');
+        preFeverFactor = currentFactor; 
+        currentFactor = 1;
+        bulletDisplay.textContent = '1';
+        bulletLabel.textContent = '無敵狀態';
+        container.classList.add('fever-active');
+
+        let feverTime = feverDuration; 
+        feverInterval = setInterval(() => {
+            if(isPaused) return; 
+            feverTime -= 100;
+            energy = (feverTime / feverDuration) * 100;
+            energyBar.style.width = energy + '%';
+            if (feverTime <= 0) {
+                endFeverMode();
+            }
+        }, 100);
+    }
+
+    // 新增：防誤觸大絕冷卻機制
+    function endFeverMode() {
+        clearInterval(feverInterval); 
+        isFeverMode = false;
+        energy = 0;
+        energyBar.style.width = '0%';
+        container.classList.remove('fever-active');
+        
+        isCooldown = true;
+        container.classList.add('cooldown-active');
+        bulletLabel.textContent = '冷卻中...';
+        bulletDisplay.textContent = '🚫';
+        
+        // 畫面中央視覺警告
+        const alertMsg = document.createElement('div');
+        alertMsg.className = 'cooldown-alert';
+        alertMsg.textContent = '⚠️ 大絕結束';
+        board.appendChild(alertMsg);
+
+        setTimeout(() => {
+            isCooldown = false;
+            container.classList.remove('cooldown-active');
+            if(alertMsg.parentElement) alertMsg.remove();
+            
+            bulletLabel.textContent = '準備射擊';
+            currentFactor = preFeverFactor;
+            bulletDisplay.textContent = currentFactor;
+            loadNextBullet(); 
+        }, 1500); // 1.5秒無敵冷卻保護，避免誤觸
+    }
+
+    board.addEventListener('pointermove', (e) => {
+        if (!isFeverMode || isCooldown || isGameOver || isPaused) return;
+        if (e.pointerType === 'mouse' && e.buttons !== 1) return; 
+        const elUnderPointer = document.elementFromPoint(e.clientX, e.clientY);
+        const monsterEl = elUnderPointer ? elUnderPointer.closest('.monster') : null;
+        if (monsterEl) {
+            const monsterObj = monsters.find(m => m.el === monsterEl);
+            if (monsterObj) { 
+                playSFX('hit'); 
+                destroyMonster(monsterObj, e.clientX, e.clientY, 1); 
+                addScore(1); 
+            }
+        }
+    });
+
+    function gameLoop() {
+        if (!isGameOver && !isPaused && gameStarted) {
+            const bWidth = board.clientWidth; const bHeight = board.clientHeight;
+            monsters.forEach(m => {
+                m.x += m.vx; m.y += m.vy;
+                if (m.x <= 0) { m.x = 0; m.vx = Math.abs(m.vx); }
+                else if (m.x >= bWidth - m.size) { m.x = bWidth - m.size; m.vx = -Math.abs(m.vx); }
+                if (m.y <= 0) { m.y = 0; m.vy = Math.abs(m.vy); }
+                else if (m.y >= bHeight - m.size) { m.y = bHeight - m.size; m.vy = -Math.abs(m.vy); }
+                m.el.style.left = m.x + 'px'; m.el.style.top = m.y + 'px';
+            });
+        }
+        requestAnimationFrame(gameLoop);
+    }
+
+</script>
 </body>
 </html>
